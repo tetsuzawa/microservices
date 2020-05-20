@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package hrtf;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "hrtfpb";
+
+message HRTF {
+    uint64 id = 1;
+    uint64 user_id = 2;
+    string storage_id = 3;
+    string file_name = 4;
+    string license = 5;
+    google.protobuf.Timestamp createdAt = 6;
+    google.protobuf.Timestamp updatedAt = 7;
+    google.protobuf.Timestamp deletedAt = 8;
+}
+
+message CreateHRTFRequest {
+    HRTF hrtf = 1;
+}
+
+message CreateHRTFResponse {
+    HRTF hrtf = 1;
+}
+
+
+message GetHRTFRequest {
+    HRTF hrtf = 1;
+}
+
+message GetHRTFResponse {
+    HRTF hrtf = 1;
+}
+
+message UpdateHRTFRequest {
+    HRTF hrtf = 1;
+}
+
+message UpdateHRTFResponse {
+    HRTF hrtf = 1;
+}
+
+message DeleteHRTFRequest {
+    HRTF hrtf = 1;
+}
+
+message DeleteHRTFResponse {
+    bool is_success = 1;
+}
+
+service HRTFService {
+    rpc CreateHRTF (CreateHRTFRequest) returns (CreateHRTFResponse);
+    rpc GetHRTF (GetHRTFRequest) returns (GetHRTFResponse);
+    rpc UpdateHRTF (UpdateHRTFRequest) returns (UpdateHRTFResponse);
+    rpc DeleteHRTF (DeleteHRTFRequest) returns (DeleteHRTFResponse);
+}
