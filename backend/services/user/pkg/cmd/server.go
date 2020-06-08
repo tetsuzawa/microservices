@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/jinzhu/gorm"
 	"github.com/kelseyhightower/envconfig"
 
 	"github.com/tetsuzawa/microservices/backend/pkg/mysqlx"
@@ -65,7 +65,7 @@ func RunServer() error {
 	return grpc.RunServer(ctx, userServiceServer, cfg.GRPCHost, cfg.GRPCPort)
 }
 
-func newDB() (*gorm.DB, error) {
+func newDB() (*sql.DB, error) {
 	// Mysql
 	var cfg mysqlx.Config
 	err := mysqlx.ReadEnv(&cfg)
