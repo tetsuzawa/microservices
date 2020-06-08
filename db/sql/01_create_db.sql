@@ -1,7 +1,7 @@
 CREATE DATABASE IF NOT EXISTS microservices;
 
 CREATE TABLE IF NOT EXISTS microservices.users (
-    id INT AUTO_INCREMENT NOT NULL PRIMARY KEY UNIQUE,
+    id VARCHAR(36) NOT NULL UNIQUE,
     user_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS microservices.users (
 );
 
 CREATE TABLE IF NOT EXISTS microservices.hrtfs (
-    id INT AUTO_INCREMENT NOT NULL UNIQUE,
-    user_id INT NOT NULL,
+    id VARCHAR(36) NOT NULL UNIQUE,
+    user_id VARCHAR(36) NOT NULL,
     storage_id VARCHAR(255) NOT NULL,
     filename VARCHAR(255) NOT NULL,
     license VARCHAR(255) NOT NULL,
