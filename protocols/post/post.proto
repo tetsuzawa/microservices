@@ -26,7 +26,6 @@ message CreatePostResponse {
     Post post = 1;
 }
 
-
 message GetPostRequest {
     string id = 1;
 }
@@ -36,7 +35,7 @@ message GetPostResponse {
 }
 
 message UpdatePostRequest {
-    string post_id = 1;
+    string id = 1;
     string user_id = 2;
     string text = 3;
 }
@@ -46,7 +45,7 @@ message UpdatePostResponse {
 }
 
 message DeletePostRequest {
-    string post_id = 1;
+    string id = 1;
     string user_id = 2;
 }
 
