@@ -130,7 +130,7 @@ func (r *Gateway) UpdatePost(ctx context.Context, id, userID, text string) (api.
 		row := tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
 		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
 		if err != nil {
-			return status.Error(codes.Unknown, "failed to read Post-> "+err.Error())
+			return status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
 		}
 		if post.UserId != userID {
 			return status.Error(codes.InvalidArgument, "User ID is not valid")
@@ -138,6 +138,9 @@ func (r *Gateway) UpdatePost(ctx context.Context, id, userID, text string) (api.
 
 		// Postを更新
 		_, err = tx.Exec("UPDATE posts SET text = ? WHERE id = ?", text, id)
+		if err != nil {
+			return status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
+		}
 
 		// 更新後のPostを取得
 		row = tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
@@ -160,4 +163,58 @@ func (r *Gateway) UpdatePost(ctx context.Context, id, userID, text string) (api.
 		return api.Post{}, status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
 	}
 	return post, nil
+}
+
+// DeletePost - Postを削除
+func (r *Gateway) DeletePost(ctx context.Context, id, userID string) (bool, error) {
+	// SQL connectionを取得
+	c, err := r.connect(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer c.Close()
+
+	//Transactionを開始
+	tx, err := c.BeginTx(ctx, nil)
+	if err != nil {
+		if err != nil {
+			return false, status.Error(codes.Unknown, "failed to delete Post-> "+err.Error())
+		}
+	}
+
+	// Transactions
+	trans := func(tx *sql.Tx) error {
+		// Postを入れる変数を宣言
+		var post api.Post
+
+		// 削除前のPostを取得
+		row := tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
+		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
+		if err != nil {
+			return status.Error(codes.Unknown, "failed to delete Post-> "+err.Error())
+		}
+		if post.UserId != userID {
+			return status.Error(codes.InvalidArgument, "User ID is not valid")
+		}
+
+		// Postを削除
+		_, err = tx.Exec("DELETE FROM posts WHERE id = ?", id)
+		if err != nil {
+			return status.Error(codes.Unknown, "failed to delete Post-> "+err.Error())
+		}
+
+		return nil
+	}
+
+	if err := trans(tx); err != nil {
+		if re := tx.Rollback(); re != nil {
+			err = fmt.Errorf("%w -> %s", err, re.Error())
+		}
+		return false, status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
+	}
+
+	if err = tx.Commit(); err != nil {
+		return false, status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
+	}
+	return true, nil
 }

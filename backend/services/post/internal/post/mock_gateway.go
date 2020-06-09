@@ -72,13 +72,29 @@ func (r *MockGateway) GetPostByID(ctx context.Context, id string) (api.Post, err
 }
 
 // UpdatePost - Postを更新
-func (r *MockGateway) UpdatePost(ctx context.Context, id,userID, text string) (api.Post, error) {
+func (r *MockGateway) UpdatePost(ctx context.Context, id, userID, text string) (api.Post, error) {
 	r.db.mu.Lock()
 	defer r.db.mu.Unlock()
 
 	post := r.db.posts.data[id]
+	if post.UserId != userID {
+		return api.Post{}, status.Error(codes.InvalidArgument, "User ID is not valid")
+	}
 	post.Text = text
 	post.UpdatedAt = ptypes.TimestampNow()
 	r.db.posts.data[post.Id] = post
 	return post, nil
+}
+
+// DeletePost - Postを削除
+func (r *MockGateway) DeletePost(ctx context.Context, id, userID string) (bool, error) {
+	r.db.mu.Lock()
+	defer r.db.mu.Unlock()
+
+	post := r.db.posts.data[id]
+	if post.UserId != userID {
+		return false, status.Error(codes.InvalidArgument, "User ID is not valid")
+	}
+	delete(r.db.posts.data, id)
+	return true, nil
 }
