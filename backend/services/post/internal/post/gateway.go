@@ -28,6 +28,7 @@ func (r *Gateway) connect(ctx context.Context) (*sql.Conn, error) {
 	return c, nil
 }
 
+// CreatePost - Postを作成
 func (r *Gateway) CreatePost(ctx context.Context, userID, text string) (api.Post, error) {
 	// SQL connectionを取得
 	c, err := r.connect(ctx)
@@ -83,6 +84,7 @@ func (r *Gateway) CreatePost(ctx context.Context, userID, text string) (api.Post
 	return post, nil
 }
 
+// GetPostByID - 指定したIDのPostを取得
 func (r *Gateway) GetPostByID(ctx context.Context, id string) (api.Post, error) {
 	// SQL connectionを取得
 	c, err := r.connect(ctx)
@@ -98,6 +100,64 @@ func (r *Gateway) GetPostByID(ctx context.Context, id string) (api.Post, error) 
 	err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
 	if err != nil {
 		return api.Post{}, status.Error(codes.Unknown, "failed to read Post-> "+err.Error())
+	}
+	return post, nil
+}
+
+// UpdatePost - Postを更新
+func (r *Gateway) UpdatePost(ctx context.Context, id, userID, text string) (api.Post, error) {
+	// SQL connectionを取得
+	c, err := r.connect(ctx)
+	if err != nil {
+		return api.Post{}, err
+	}
+	defer c.Close()
+
+	//Transactionを開始
+	tx, err := c.BeginTx(ctx, nil)
+	if err != nil {
+		if err != nil {
+			return api.Post{}, status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
+		}
+	}
+
+	// Postを入れる変数を宣言
+	var post api.Post
+	// Transactions
+	trans := func(tx *sql.Tx) error {
+
+		// 更新前のPostを取得
+		row := tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
+		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
+		if err != nil {
+			return status.Error(codes.Unknown, "failed to read Post-> "+err.Error())
+		}
+		if post.UserId != userID {
+			return status.Error(codes.InvalidArgument, "User ID is not valid")
+		}
+
+		// Postを更新
+		_, err = tx.Exec("UPDATE posts SET text = ? WHERE id = ?", text, id)
+
+		// 更新後のPostを取得
+		row = tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
+		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
+		if err != nil {
+			return status.Error(codes.Unknown, "failed to read updated Post-> "+err.Error())
+		}
+
+		return nil
+	}
+
+	if err := trans(tx); err != nil {
+		if re := tx.Rollback(); re != nil {
+			err = fmt.Errorf("%w -> %s", err, re.Error())
+		}
+		return api.Post{}, status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
+	}
+
+	if err = tx.Commit(); err != nil {
+		return api.Post{}, status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
 	}
 	return post, nil
 }

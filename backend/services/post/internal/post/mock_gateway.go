@@ -12,7 +12,7 @@ import (
 
 // MockDB - テスト・開発用のDB
 type MockDB struct {
-	mu sync.RWMutex
+	mu    sync.RWMutex
 	posts *MockPostsTable
 }
 
@@ -28,7 +28,7 @@ func NewMockGateway(db *MockDB) Repository {
 
 // MockPostTable - ポストテーブル
 type MockPostsTable struct {
-	data  map[string]api.Post
+	data map[string]api.Post
 }
 
 func newMockPostsTable() *MockPostsTable {
@@ -62,11 +62,23 @@ func (r *MockGateway) CreatePost(ctx context.Context, userID, text string) (api.
 	return post, nil
 }
 
-// ReadPostByID - 指定したIDのユーザーを取得
+// GetPostByID - 指定したIDのPostを取得
 func (r *MockGateway) GetPostByID(ctx context.Context, id string) (api.Post, error) {
 	post, ok := r.db.posts.data[id]
 	if !ok {
 		return api.Post{}, status.Error(codes.Unknown, "failed to read Post")
 	}
+	return post, nil
+}
+
+// UpdatePost - Postを更新
+func (r *MockGateway) UpdatePost(ctx context.Context, id,userID, text string) (api.Post, error) {
+	r.db.mu.Lock()
+	defer r.db.mu.Unlock()
+
+	post := r.db.posts.data[id]
+	post.Text = text
+	post.UpdatedAt = ptypes.TimestampNow()
+	r.db.posts.data[post.Id] = post
 	return post, nil
 }
