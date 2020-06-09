@@ -49,6 +49,9 @@ func (s *PostServiceServer) DeletePost(ctx context.Context, request *api.DeleteP
 }
 
 func (s *PostServiceServer) ListPosts(ctx context.Context, request *api.ListPostsRequest) (*api.ListPostsResponse, error) {
-	//TODO
-	return &api.ListPostsResponse{}, nil
+	posts, err := s.r.ListPosts(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &api.ListPostsResponse{Posts: posts}, nil
 }

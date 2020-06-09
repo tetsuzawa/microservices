@@ -65,7 +65,9 @@ func (r *Gateway) CreatePost(ctx context.Context, userID, text string) (api.Post
 		// 作成したPostを取得
 		row := tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
 		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
-		if err != nil {
+		if err == sql.ErrNoRows {
+			return status.Error(codes.InvalidArgument, "post not found-> "+err.Error())
+		} else if err != nil {
 			return status.Error(codes.Unknown, "failed to read created Post-> "+err.Error())
 		}
 		return nil
@@ -98,7 +100,9 @@ func (r *Gateway) GetPostByID(ctx context.Context, id string) (api.Post, error) 
 	// Post ID から Postを取得
 	row := c.QueryRowContext(ctx, "SELECT * FROM posts WHERE id = ?", id)
 	err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		return api.Post{}, status.Error(codes.InvalidArgument, "post not found-> "+err.Error())
+	} else if err != nil {
 		return api.Post{}, status.Error(codes.Unknown, "failed to read Post-> "+err.Error())
 	}
 	return post, nil
@@ -129,7 +133,9 @@ func (r *Gateway) UpdatePost(ctx context.Context, id, userID, text string) (api.
 		// 更新前のPostを取得
 		row := tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
 		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
-		if err != nil {
+		if err == sql.ErrNoRows {
+			return status.Error(codes.InvalidArgument, "post not found-> "+err.Error())
+		} else if err != nil {
 			return status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
 		}
 		if post.UserId != userID {
@@ -177,9 +183,7 @@ func (r *Gateway) DeletePost(ctx context.Context, id, userID string) (bool, erro
 	//Transactionを開始
 	tx, err := c.BeginTx(ctx, nil)
 	if err != nil {
-		if err != nil {
-			return false, status.Error(codes.Unknown, "failed to delete Post-> "+err.Error())
-		}
+		return false, status.Error(codes.Unknown, "failed to delete Post-> "+err.Error())
 	}
 
 	// Transactions
@@ -190,9 +194,12 @@ func (r *Gateway) DeletePost(ctx context.Context, id, userID string) (bool, erro
 		// 削除前のPostを取得
 		row := tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
 		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
-		if err != nil {
+		if err == sql.ErrNoRows {
+			return status.Error(codes.InvalidArgument, "post not found-> "+err.Error())
+		} else if err != nil {
 			return status.Error(codes.Unknown, "failed to delete Post-> "+err.Error())
 		}
+
 		if post.UserId != userID {
 			return status.Error(codes.InvalidArgument, "User ID is not valid")
 		}
@@ -217,4 +224,33 @@ func (r *Gateway) DeletePost(ctx context.Context, id, userID string) (bool, erro
 		return false, status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
 	}
 	return true, nil
+}
+
+// ListPosts - Postをすべて取得
+func (r *Gateway) ListPosts(ctx context.Context) ([]*api.Post, error) {
+	// SQL connectionを取得
+	c, err := r.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	// Postを入れる変数を宣言
+	// Post ID から Postを取得
+	rows, err := c.QueryContext(ctx, "SELECT * FROM posts ORDER BY created_at")
+	if err != nil {
+		return nil, status.Error(codes.Unknown, "failed to list Posts-> "+err.Error())
+	}
+
+	var posts []*api.Post
+	for rows.Next() {
+		var post api.Post
+		err = rows.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
+		if err != nil {
+			return nil, status.Error(codes.Unknown, "failed to list Posts-> "+err.Error())
+		}
+		posts = append(posts, &post)
+	}
+
+	return posts, nil
 }

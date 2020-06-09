@@ -98,3 +98,15 @@ func (r *MockGateway) DeletePost(ctx context.Context, id, userID string) (bool, 
 	delete(r.db.posts.data, id)
 	return true, nil
 }
+
+// ListPosts - Postをすべて取得
+func (r *MockGateway) ListPosts(ctx context.Context) ([]*api.Post, error) {
+	r.db.mu.RLock()
+	defer r.db.mu.RUnlock()
+
+	var posts []*api.Post
+	for _, v := range r.db.posts.data {
+		posts = append(posts, &v)
+	}
+	return posts, nil
+}
