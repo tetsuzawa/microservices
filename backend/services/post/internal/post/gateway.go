@@ -14,6 +14,10 @@ import (
 	"github.com/tetsuzawa/microservices/backend/pkg/api"
 )
 
+const (
+	tableNamePosts = "posts"
+)
+
 type Gateway struct {
 	db *sql.DB
 }
@@ -58,9 +62,9 @@ func (r *Gateway) CreatePost(ctx context.Context, userID, text string) (api.Post
 		}
 		id := u.String()
 
+		cmd := fmt.Sprintf("INSERT INTO %s (id, user_id, text) VALUES(?, ?, ?)", tableNamePosts)
 		// Postを挿入
-		_, err = tx.ExecContext(ctx, "INSERT INTO posts (id, user_id, text) VALUES(?, ?, ?)",
-			id, userID, text)
+		_, err = tx.ExecContext(ctx, cmd, id, userID, text)
 		if err != nil {
 			return status.Error(codes.Unknown, "failed to insert into post-> "+err.Error())
 		}
@@ -68,7 +72,8 @@ func (r *Gateway) CreatePost(ctx context.Context, userID, text string) (api.Post
 		var createdAt time.Time
 		var updatedAt time.Time
 		// 作成したPostを取得
-		row := tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
+		cmd := fmt.Sprintf("SELECT * FROM %s WHERE id = ?", tableNamePosts)
+		row := tx.QueryRow(cmd, id)
 		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.ParentPostId, &post.CommentCount, &createdAt, &updatedAt)
 		if err == sql.ErrNoRows {
 			return status.Error(codes.InvalidArgument, "post not found-> "+err.Error())
@@ -114,7 +119,8 @@ func (r *Gateway) GetPostByID(ctx context.Context, id string) (api.Post, error) 
 	var createdAt time.Time
 	var updatedAt time.Time
 	// Post ID から Postを取得
-	row := c.QueryRowContext(ctx, "SELECT * FROM posts WHERE id = ?", id)
+	cmd := fmt.Sprintf("SELECT * FROM %s WHERE id = ?", tableNamePosts)
+	row := c.QueryRowContext(ctx, cmd, id)
 	err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.ParentPostId, &post.CommentCount, &createdAt, &updatedAt)
 	if err == sql.ErrNoRows {
 		return api.Post{}, status.Error(codes.InvalidArgument, "post not found-> "+err.Error())
@@ -159,7 +165,8 @@ func (r *Gateway) UpdatePost(ctx context.Context, id, userID, text string) (api.
 		var updatedAt time.Time
 
 		// 更新前のPostを取得
-		row := tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
+		cmd := fmt.Sprintf("SELECT * FROM %s WHERE id = ?", tableNamePosts)
+		row := tx.QueryRow(cmd, id)
 		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.ParentPostId, &post.CommentCount, &createdAt, &updatedAt)
 		if err == sql.ErrNoRows {
 			return status.Error(codes.InvalidArgument, "post not found-> "+err.Error())
@@ -178,14 +185,16 @@ func (r *Gateway) UpdatePost(ctx context.Context, id, userID, text string) (api.
 			return status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
 		}
 
+		cmd = fmt.Sprintf("UPDATE %s SET text = ? WHERE id = ?", tableNamePosts)
 		// Postを更新
-		_, err = tx.Exec("UPDATE posts SET text = ? WHERE id = ?", text, id)
+		_, err = tx.Exec(cmd, text, id)
 		if err != nil {
 			return status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
 		}
 
 		// 更新後のPostを取得
-		row = tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
+		cmd := fmt.Sprintf("SELECT * FROM %s WHERE id = ?", tableNamePosts)
+		row = tx.QueryRow(cmd, id)
 		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.ParentPostId, &post.CommentCount, &createdAt, &updatedAt)
 		if err != nil {
 			return status.Error(codes.Unknown, "failed to read updated Post-> "+err.Error())
@@ -235,10 +244,11 @@ func (r *Gateway) DeletePost(ctx context.Context, id, userID string) (bool, erro
 		// Postを入れる変数を宣言
 		var post api.Post
 
+		cmd := fmt.Sprintf("SELECT * FROM posts WHERE id = ?", tableNamePosts)
 		var createdAt time.Time
 		var updatedAt time.Time
 		// 削除前のPostを取得
-		row := tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
+		row := tx.QueryRow(cmd, id)
 		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.ParentPostId, &post.CommentCount, &createdAt, &updatedAt)
 		if err == sql.ErrNoRows {
 			return status.Error(codes.InvalidArgument, "post not found-> "+err.Error())
@@ -259,7 +269,8 @@ func (r *Gateway) DeletePost(ctx context.Context, id, userID string) (bool, erro
 		}
 
 		// Postを削除
-		_, err = tx.Exec("DELETE FROM posts WHERE id = ?", id)
+		cmd = fmt.Sprintf("DELETE FROM %s WHERE id = ?", tableNamePosts)
+		_, err = tx.Exec(cmd, id)
 		if err != nil {
 			return status.Error(codes.Unknown, "failed to delete Post-> "+err.Error())
 		}
@@ -291,7 +302,8 @@ func (r *Gateway) ListPosts(ctx context.Context) ([]*api.Post, error) {
 
 	// Postを入れる変数を宣言
 	// Post ID から Postを取得
-	rows, err := c.QueryContext(ctx, "SELECT * FROM posts ORDER BY created_at")
+	cmd := fmt.Sprintf("SELECT * FROM %s ORDER BY created_at", tableNamePosts)
+	rows, err := c.QueryContext(ctx, cmd)
 	if err != nil {
 		return nil, status.Error(codes.Unknown, "failed to list Posts-> "+err.Error())
 	}
