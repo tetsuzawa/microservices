@@ -4,10 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
+
+	"github.com/golang/protobuf/ptypes"
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/google/uuid"
 	"github.com/tetsuzawa/microservices/backend/pkg/api"
 )
 
@@ -62,14 +65,25 @@ func (r *Gateway) CreatePost(ctx context.Context, userID, text string) (api.Post
 			return status.Error(codes.Unknown, "failed to insert into post-> "+err.Error())
 		}
 
+		var createdAt time.Time
+		var updatedAt time.Time
 		// 作成したPostを取得
 		row := tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
-		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
+		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.ParentPostId, &post.CommentCount, &createdAt, &updatedAt)
 		if err == sql.ErrNoRows {
 			return status.Error(codes.InvalidArgument, "post not found-> "+err.Error())
 		} else if err != nil {
 			return status.Error(codes.Unknown, "failed to read created Post-> "+err.Error())
 		}
+		post.CreatedAt, err = ptypes.TimestampProto(createdAt)
+		if err != nil {
+			return status.Error(codes.Unknown, "failed to insert into post-> "+err.Error())
+		}
+		post.UpdatedAt, err = ptypes.TimestampProto(updatedAt)
+		if err != nil {
+			return status.Error(codes.Unknown, "failed to insert into post-> "+err.Error())
+		}
+
 		return nil
 	}
 
@@ -97,14 +111,25 @@ func (r *Gateway) GetPostByID(ctx context.Context, id string) (api.Post, error) 
 
 	// Postを入れる変数を宣言
 	var post api.Post
+	var createdAt time.Time
+	var updatedAt time.Time
 	// Post ID から Postを取得
 	row := c.QueryRowContext(ctx, "SELECT * FROM posts WHERE id = ?", id)
-	err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
+	err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.ParentPostId, &post.CommentCount, &createdAt, &updatedAt)
 	if err == sql.ErrNoRows {
 		return api.Post{}, status.Error(codes.InvalidArgument, "post not found-> "+err.Error())
 	} else if err != nil {
 		return api.Post{}, status.Error(codes.Unknown, "failed to read Post-> "+err.Error())
 	}
+	post.CreatedAt, err = ptypes.TimestampProto(createdAt)
+	if err != nil {
+		return api.Post{}, status.Error(codes.Unknown, "failed to read Post-> "+err.Error())
+	}
+	post.UpdatedAt, err = ptypes.TimestampProto(updatedAt)
+	if err != nil {
+		return api.Post{}, status.Error(codes.Unknown, "failed to read Post-> "+err.Error())
+	}
+
 	return post, nil
 }
 
@@ -130,9 +155,12 @@ func (r *Gateway) UpdatePost(ctx context.Context, id, userID, text string) (api.
 	// Transactions
 	trans := func(tx *sql.Tx) error {
 
+		var createdAt time.Time
+		var updatedAt time.Time
+
 		// 更新前のPostを取得
 		row := tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
-		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
+		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.ParentPostId, &post.CommentCount, &createdAt, &updatedAt)
 		if err == sql.ErrNoRows {
 			return status.Error(codes.InvalidArgument, "post not found-> "+err.Error())
 		} else if err != nil {
@@ -140,6 +168,14 @@ func (r *Gateway) UpdatePost(ctx context.Context, id, userID, text string) (api.
 		}
 		if post.UserId != userID {
 			return status.Error(codes.InvalidArgument, "User ID is not valid")
+		}
+		post.CreatedAt, err = ptypes.TimestampProto(createdAt)
+		if err != nil {
+			return status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
+		}
+		post.UpdatedAt, err = ptypes.TimestampProto(updatedAt)
+		if err != nil {
+			return status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
 		}
 
 		// Postを更新
@@ -150,9 +186,17 @@ func (r *Gateway) UpdatePost(ctx context.Context, id, userID, text string) (api.
 
 		// 更新後のPostを取得
 		row = tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
-		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
+		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.ParentPostId, &post.CommentCount, &createdAt, &updatedAt)
 		if err != nil {
 			return status.Error(codes.Unknown, "failed to read updated Post-> "+err.Error())
+		}
+		post.CreatedAt, err = ptypes.TimestampProto(createdAt)
+		if err != nil {
+			return status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
+		}
+		post.UpdatedAt, err = ptypes.TimestampProto(updatedAt)
+		if err != nil {
+			return status.Error(codes.Unknown, "failed to update Post-> "+err.Error())
 		}
 
 		return nil
@@ -191,12 +235,22 @@ func (r *Gateway) DeletePost(ctx context.Context, id, userID string) (bool, erro
 		// Postを入れる変数を宣言
 		var post api.Post
 
+		var createdAt time.Time
+		var updatedAt time.Time
 		// 削除前のPostを取得
 		row := tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
-		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
+		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.ParentPostId, &post.CommentCount, &createdAt, &updatedAt)
 		if err == sql.ErrNoRows {
 			return status.Error(codes.InvalidArgument, "post not found-> "+err.Error())
 		} else if err != nil {
+			return status.Error(codes.Unknown, "failed to delete Post-> "+err.Error())
+		}
+		post.CreatedAt, err = ptypes.TimestampProto(createdAt)
+		if err != nil {
+			return status.Error(codes.Unknown, "failed to delete Post-> "+err.Error())
+		}
+		post.UpdatedAt, err = ptypes.TimestampProto(updatedAt)
+		if err != nil {
 			return status.Error(codes.Unknown, "failed to delete Post-> "+err.Error())
 		}
 
@@ -245,9 +299,19 @@ func (r *Gateway) ListPosts(ctx context.Context) ([]*api.Post, error) {
 	var posts []*api.Post
 	for rows.Next() {
 		var post api.Post
-		err = rows.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
+		var createdAt time.Time
+		var updatedAt time.Time
+		err = rows.Scan(&post.Id, &post.UserId, &post.Text, &post.ParentPostId, &post.CommentCount, &createdAt, &updatedAt)
 		if err != nil {
 			return nil, status.Error(codes.Unknown, "failed to list Posts-> "+err.Error())
+		}
+		post.CreatedAt, err = ptypes.TimestampProto(createdAt)
+		if err != nil {
+			return nil, status.Error(codes.Unknown, "failed to delete Post-> "+err.Error())
+		}
+		post.UpdatedAt, err = ptypes.TimestampProto(updatedAt)
+		if err != nil {
+			return nil, status.Error(codes.Unknown, "failed to delete Post-> "+err.Error())
 		}
 		posts = append(posts, &post)
 	}
