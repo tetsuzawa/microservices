@@ -40,6 +40,6 @@ func RunServer(ctx context.Context, hrtfSrvc api.HRTFServiceServer, host string,
 	}()
 
 	// start gRPC server
-	log.Println("starting gRPC server...")
+	log.Printf("starting gRPC server at %s:%s...", host, port)
 	return server.Serve(listen)
 }

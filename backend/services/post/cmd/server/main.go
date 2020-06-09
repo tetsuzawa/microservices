@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/tetsuzawa/microservices/backend/services/user/pkg/cmd"
+	"github.com/tetsuzawa/microservices/backend/services/post/pkg/cmd"
 )
 
 func main() {
