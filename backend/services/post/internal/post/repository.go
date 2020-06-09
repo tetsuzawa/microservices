@@ -6,5 +6,6 @@ import (
 )
 
 type Repository interface {
-	Create(ctx context.Context, userID, text string) (api.Post, error)
+	CreatePost(ctx context.Context, userID, text string) (api.Post, error)
+	GetPostByID(ctx context.Context, id string) (api.Post, error)
 }

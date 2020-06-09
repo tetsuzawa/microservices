@@ -19,7 +19,7 @@ func NewGateway(db *sql.DB) Repository {
 	return &Gateway{db}
 }
 
-// connect returns SQL database connection from the pool
+// コネクションプールからSQL connectionを取得
 func (r *Gateway) connect(ctx context.Context) (*sql.Conn, error) {
 	c, err := r.db.Conn(ctx)
 	if err != nil {
@@ -28,8 +28,8 @@ func (r *Gateway) connect(ctx context.Context) (*sql.Conn, error) {
 	return c, nil
 }
 
-func (r *Gateway) Create(ctx context.Context, userID, text string) (api.Post, error) {
-	// get SQL connection from pool
+func (r *Gateway) CreatePost(ctx context.Context, userID, text string) (api.Post, error) {
+	// SQL connectionを取得
 	c, err := r.connect(ctx)
 	if err != nil {
 		return api.Post{}, err
@@ -43,25 +43,25 @@ func (r *Gateway) Create(ctx context.Context, userID, text string) (api.Post, er
 		}
 	}
 
-	// declare post to return if success
+	// Postを入れる変数を宣言
 	var post api.Post
 	// Transactions
 	trans := func(tx *sql.Tx) error {
-		// generate ID
+		// IDを生成
 		u, err := uuid.NewRandom()
 		if err != nil {
 			return status.Error(codes.Unknown, "failed to insert into post-> "+err.Error())
 		}
 		id := u.String()
 
-		// insert Post entity data
+		// Postを挿入
 		_, err = tx.ExecContext(ctx, "INSERT INTO posts (id, user_id, text) VALUES(?, ?, ?)",
 			id, userID, text)
 		if err != nil {
 			return status.Error(codes.Unknown, "failed to insert into post-> "+err.Error())
 		}
 
-		// read created Post
+		// 作成したPostを取得
 		row := tx.QueryRow("SELECT * FROM posts WHERE id = ?", id)
 		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
 		if err != nil {
@@ -79,6 +79,25 @@ func (r *Gateway) Create(ctx context.Context, userID, text string) (api.Post, er
 
 	if err = tx.Commit(); err != nil {
 		return api.Post{}, status.Error(codes.Unknown, "failed to insert into post-> "+err.Error())
+	}
+	return post, nil
+}
+
+func (r *Gateway) GetPostByID(ctx context.Context, id string) (api.Post, error) {
+	// SQL connectionを取得
+	c, err := r.connect(ctx)
+	if err != nil {
+		return api.Post{}, err
+	}
+	defer c.Close()
+
+	// Postを入れる変数を宣言
+	var post api.Post
+	// Post ID から Postを取得
+	row := c.QueryRowContext(ctx, "SELECT * FROM posts WHERE id = ?", id)
+	err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.CommentCount, &post.ParentPostId, &post.CreatedAt, &post.UpdatedAt)
+	if err != nil {
+		return api.Post{}, status.Error(codes.Unknown, "failed to read Post-> "+err.Error())
 	}
 	return post, nil
 }

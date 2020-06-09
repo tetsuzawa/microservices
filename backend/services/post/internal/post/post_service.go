@@ -15,7 +15,7 @@ func NewPostServiceServer(r Repository) api.PostServiceServer {
 
 func (s *PostServiceServer) CreatePost(ctx context.Context, request *api.CreatePostRequest) (*api.CreatePostResponse, error) {
 	//TODO ユーザーの存在確認（別サービスとの通信）
-	post, err := s.r.Create(ctx, request.UserId, request.Text)
+	post, err := s.r.CreatePost(ctx, request.UserId, request.Text)
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +24,11 @@ func (s *PostServiceServer) CreatePost(ctx context.Context, request *api.CreateP
 
 func (s *PostServiceServer) GetPost(ctx context.Context, request *api.GetPostRequest) (*api.GetPostResponse, error) {
 	//TODO
-	return &api.GetPostResponse{}, nil
+	post, err := s.r.GetPostByID(ctx, request.Id)
+	if err != nil {
+		return nil, err
+	}
+	return &api.GetPostResponse{Post: &post}, nil
 }
 
 func (s *PostServiceServer) UpdatePost(ctx context.Context, request *api.UpdatePostRequest) (*api.UpdatePostResponse, error) {
