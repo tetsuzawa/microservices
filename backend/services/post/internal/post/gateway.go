@@ -72,7 +72,7 @@ func (r *Gateway) CreatePost(ctx context.Context, userID, text string) (api.Post
 		var createdAt time.Time
 		var updatedAt time.Time
 		// 作成したPostを取得
-		cmd := fmt.Sprintf("SELECT * FROM %s WHERE id = ?", tableNamePosts)
+		cmd = fmt.Sprintf("SELECT * FROM %s WHERE id = ?", tableNamePosts)
 		row := tx.QueryRow(cmd, id)
 		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.ParentPostId, &post.CommentCount, &createdAt, &updatedAt)
 		if err == sql.ErrNoRows {
@@ -193,7 +193,7 @@ func (r *Gateway) UpdatePost(ctx context.Context, id, userID, text string) (api.
 		}
 
 		// 更新後のPostを取得
-		cmd := fmt.Sprintf("SELECT * FROM %s WHERE id = ?", tableNamePosts)
+		cmd = fmt.Sprintf("SELECT * FROM %s WHERE id = ?", tableNamePosts)
 		row = tx.QueryRow(cmd, id)
 		err = row.Scan(&post.Id, &post.UserId, &post.Text, &post.ParentPostId, &post.CommentCount, &createdAt, &updatedAt)
 		if err != nil {

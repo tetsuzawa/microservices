@@ -8,6 +8,7 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/google/uuid v1.1.1
+	github.com/gorilla/mux v1.7.4 // indirect
 	github.com/jinzhu/gorm v1.9.12 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
 	google.golang.org/grpc v1.29.1
