@@ -7,8 +7,8 @@ import "google/protobuf/timestamp.proto";
 //option go_package = "hrtfpb";
 
 message HRTF {
-    uint64 id = 1;
-    uint64 user_id = 2;
+    string id = 1;
+    string user_id = 2;
     string storage_id = 3;
     string filename = 4;
     string license = 5;

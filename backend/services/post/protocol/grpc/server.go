@@ -2,25 +2,28 @@ package grpc
 
 import (
 	"context"
-	"github.com/tetsuzawa/microservices/backend/internal/user"
-	"github.com/tetsuzawa/microservices/backend/pkg/api"
-	"google.golang.org/grpc"
+	"fmt"
 	"log"
 	"net"
 	"os"
 	"os/signal"
+
+	"google.golang.org/grpc"
+
+	"github.com/tetsuzawa/microservices/backend/pkg/api"
 )
 
-func RunServer(ctx context.Context, srvs user.Services) error {
-	listen, err := net.Listen("tcp", ":80")
+// RunServer runs gRPC service to publish service
+func RunServer(ctx context.Context, postSrvc api.PostServiceServer, host string, port string) error {
+	address := fmt.Sprintf("%s:%s", host, port)
+	listen, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
 	}
 
 	// register service
 	server := grpc.NewServer()
-	api.RegisterUserServiceServer(server, srvs.UserServiceServer)
-	api.RegisterHRTFServiceServer(server, srvs.HrtfServiceServer)
+	api.RegisterPostServiceServer(server, postSrvc)
 
 	// graceful shutdown
 	c := make(chan os.Signal, 1)
@@ -37,6 +40,6 @@ func RunServer(ctx context.Context, srvs user.Services) error {
 	}()
 
 	// start gRPC server
-	log.Println("starting gRPC server...")
+	log.Printf("starting gRPC server at %s:%s...", host, port)
 	return server.Serve(listen)
 }

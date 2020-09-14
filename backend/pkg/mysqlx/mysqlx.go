@@ -1,10 +1,10 @@
 package mysqlx
 
 import (
+	"database/sql"
 	"fmt"
 
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/mysql"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/kelseyhightower/envconfig"
 )
 
@@ -58,7 +58,7 @@ func (c *Config) build() {
 }
 
 // Connect - Mysqlに接続
-func (c *Config) Connect() (*gorm.DB, error) {
+func (c *Config) Connect() (*sql.DB, error) {
 	c.build()
 	const DBMS = "mysql"
 	CONNECT := fmt.Sprintf(
@@ -74,9 +74,9 @@ func (c *Config) Connect() (*gorm.DB, error) {
 		c.Loc,
 	)
 
-	db, err := gorm.Open(DBMS, CONNECT)
+	db, err := sql.Open(DBMS, CONNECT)
 	if err != nil {
-		return nil, fmt.Errorf("gorm.Open: %w", err)
+		return nil, fmt.Errorf("sql.Open: %w", err)
 	}
 	return db, nil
 }

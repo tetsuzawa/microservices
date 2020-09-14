@@ -1,15 +1,16 @@
 package user
 
 import (
+	"database/sql"
+
 	"github.com/gomodule/redigo/redis"
-	"github.com/jinzhu/gorm"
 )
 
 type Gateway struct {
-	db        *gorm.DB
+	db        *sql.DB
 	SessionDB redis.Conn
 }
 
-func NewGateway(db *gorm.DB, sessionDB redis.Conn) Repository {
+func NewGateway(db *sql.DB, sessionDB redis.Conn) Repository {
 	return &Gateway{db, sessionDB}
 }

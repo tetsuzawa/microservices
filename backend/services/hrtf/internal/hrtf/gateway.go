@@ -1,16 +1,16 @@
 package hrtf
 
 import (
-	"github.com/jinzhu/gorm"
+	"database/sql"
 
 	"github.com/tetsuzawa/microservices/backend/pkg/awsx"
 )
 
 type Gateway struct {
-	db      *gorm.DB
+	db      *sql.DB
 	storage *awsx.Connection
 }
 
-func NewGateway(db *gorm.DB, strg *awsx.Connection) Repository {
+func NewGateway(db *sql.DB, strg *awsx.Connection) Repository {
 	return &Gateway{db, strg}
 }

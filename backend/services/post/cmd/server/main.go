@@ -1,21 +1,24 @@
-package cmd
+package main
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/tetsuzawa/microservices/backend/services/post/protocol/grpc"
 	"log"
+	"os"
 
 	"github.com/kelseyhightower/envconfig"
-
-	"github.com/tetsuzawa/microservices/backend/pkg/awsx"
 	"github.com/tetsuzawa/microservices/backend/pkg/mysqlx"
-	"github.com/tetsuzawa/microservices/backend/services/hrtf/internal/hrtf"
-	"github.com/tetsuzawa/microservices/backend/services/hrtf/protocol/grpc"
-
-	// mysql driver
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/tetsuzawa/microservices/backend/services/post/internal/post"
 )
+
+func main() {
+	if err := RunServer(); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+}
 
 // Config - サーバのホストとポートのコンフィグ
 type Config struct {
@@ -56,14 +59,10 @@ func RunServer() error {
 		return err
 	}
 	defer db.Close()
-	strg, err := newStorage()
-	if err != nil {
-		return err
-	}
-	repository := hrtf.NewGateway(db, strg)
-	hrtfServiceServer := hrtf.NewHRTFServiceServer(repository)
+	repository := post.NewGateway(db)
+	postServiceServer := post.NewPostServiceServer(repository)
 
-	return grpc.RunServer(ctx, hrtfServiceServer, cfg.GRPCHost, cfg.GRPCPort)
+	return grpc.RunServer(ctx, postServiceServer, cfg.GRPCHost, cfg.GRPCPort)
 }
 
 func newDB() (*sql.DB, error) {
@@ -79,18 +78,4 @@ func newDB() (*sql.DB, error) {
 		return nil, fmt.Errorf("mysqlx connection error %w", err)
 	}
 	return db, nil
-}
-
-func newStorage() (*awsx.Connection, error) {
-	var cfg awsx.Config
-	err := awsx.ReadEnv(&cfg)
-	if err != nil {
-		return nil, fmt.Errorf("awsx env read error %w", err)
-	}
-	log.Printf("Connecting to S3 ...")
-	strg, err := cfg.Connect()
-	if err != nil {
-		return nil, fmt.Errorf("awsx connection error %w", err)
-	}
-	return strg, nil
 }
